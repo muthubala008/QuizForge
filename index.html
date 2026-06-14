@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>QuizForge — AI Quiz Generator</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <nav class="navbar">
+    <div class="logo">⚡ QuizForge</div>
+    <button class="theme-toggle" id="themeToggle" title="Toggle theme">🌙</button>
+  </nav>
+
+  <!-- SCREEN 1: HOME -->
+  <section class="screen active" id="homeScreen">
+    <div class="hero">
+      <div class="badge">AI-Powered</div>
+      <h1>Turn your notes into<br/><span class="accent">a quiz instantly</span></h1>
+      <p class="subtitle">Upload your syllabus, paste your notes, or drop an image — QuizForge generates questions automatically using AI.</p>
+
+      <div class="upload-area" id="uploadArea">
+        <div class="upload-icon">📄</div>
+        <p class="upload-title">Drop your file here</p>
+        <p class="upload-sub">Supports PDF, Image, or plain text</p>
+        <input type="file" id="fileInput" accept=".pdf,.png,.jpg,.jpeg,.txt" hidden/>
+        <button class="btn-secondary" onclick="document.getElementById('fileInput').click()">Browse File</button>
+      </div>
+
+      <div class="divider"><span>or</span></div>
+
+      <div class="paste-area">
+        <textarea id="pasteText" placeholder="Paste your notes or syllabus here..."></textarea>
+      </div>
+      <div class="api-key-box">
+       <input type="password" id="apiKeyInput" placeholder="Enter your Gemini API Key..." />
+      </div>
+      <button class="btn-primary" id="generateBtn">Generate Quiz ⚡</button>
+    </div>
+  </section>
+
+  <!-- SCREEN 2: LOADING -->
+  <section class="screen" id="loadingScreen">
+    <div class="loading-container">
+      <div class="spinner"></div>
+      <h2>Generating your quiz...</h2>
+      <p id="loadingMsg">Reading your content</p>
+      <div class="loading-steps">
+        <div class="step active" id="step1">📖 Reading content</div>
+        <div class="step" id="step2">🧠 Understanding topics</div>
+        <div class="step" id="step3">❓ Generating questions</div>
+        <div class="step" id="step4">✅ Finalizing quiz</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SCREEN 3: QUIZ -->
+  <section class="screen" id="quizScreen">
+    <div class="quiz-container">
+      <div class="quiz-header">
+        <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+        <div class="quiz-meta">
+          <span id="questionCounter">Q 1 / 10</span>
+          <div class="timer-box" id="timerBox">⏱ <span id="timerDisplay">30</span>s</div>
+          <span id="scoreDisplay">Score: 0</span>
+        </div>
+      </div>
+
+      <div class="question-card">
+        <p class="question-label">Question</p>
+        <h2 id="questionText">Loading question...</h2>
+        <div class="options-grid" id="optionsGrid"></div>
+      </div>
+
+      <button class="btn-primary" id="nextBtn" style="display:none">Next Question →</button>
+    </div>
+  </section>
+
+  <!-- SCREEN 4: SCORE -->
+  <section class="screen" id="scoreScreen">
+    <div class="score-container">
+      <div class="score-emoji" id="scoreEmoji">🎉</div>
+      <h1 id="scoreTitle">Great job!</h1>
+      <div class="score-circle">
+        <span id="finalScore">0/10</span>
+      </div>
+      <p id="scoreMessage">You answered correctly.</p>
+
+      <div class="score-breakdown" id="scoreBreakdown"></div>
+
+      <div class="score-actions">
+        <button class="btn-primary" onclick="restartQuiz()">Try Again 🔄</button>
+        <button class="btn-secondary" onclick="goHome()">New Quiz 📄</button>
+      </div>
+    </div>
+  </section>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
