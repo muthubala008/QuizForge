@@ -8,6 +8,7 @@ let timer = null;
 let timeLeft = 30;
 let answered = false;
 let userAnswers = [];
+let previousQuestions = [];
 
 // =====================
 //  THEME TOGGLE
@@ -129,7 +130,8 @@ Return ONLY a valid JSON array (no explanation, no markdown, no backticks) in th
   }
 ]
 
-The answer field is the index (0-3) of the correct option.`;
+The answer field is the index (0-3) of the correct option.
+${previousQuestions.length > 0 ? `Do NOT repeat these questions: ${previousQuestions.join(', ')}` : ''}`;
 
   try {
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`, {
@@ -216,6 +218,7 @@ function startQuiz() {
   currentQ = 0;
   score = 0;
   userAnswers = [];
+  previousQuestions = [...previousQuestions, ...questions.map(q => q.question)];
   showScreen('quizScreen');
   renderQuestion();
 }
@@ -348,6 +351,7 @@ function restartQuiz() {
 
 function goHome() {
   showScreen('homeScreen');
+  previousQuestions = [];
   document.getElementById('pasteText').value = '';
   fileInput.value = '';
   const icon  = uploadArea.querySelector('.upload-icon');
@@ -357,6 +361,7 @@ function goHome() {
   title.textContent = 'Drop your file here';
   sub.textContent   = 'Supports PDF, Image, or plain text';
 }
+
 async function extractTextFromPDF(file) {
   const arrayBuffer = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
@@ -367,6 +372,16 @@ async function extractTextFromPDF(file) {
     text += content.items.map(item => item.str).join(' ') + '\n';
   }
   return text;
+}
+
+async function generateNextSet() {
+  const text = document.getElementById('pasteText').value.trim();
+  if (text) {
+    await generateQuizFromText(text);
+  } else {
+    alert('Please go back to home and upload your file again!');
+    goHome();
+  }
 }
 
 // =====================
