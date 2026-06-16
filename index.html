@@ -27,7 +27,8 @@
         <p class="upload-title">Drop your file here</p>
         <p class="upload-sub">Supports PDF, Image, or plain text</p>
         <input type="file" id="fileInput" accept=".pdf,.png,.jpg,.jpeg,.txt" hidden/>
-        <button class="btn-secondary" onclick="document.getElementById('fileInput').click()">Browse File</button>
+        <!-- Bug 10 Fix: stopPropagation so the browseBtn click doesn't also trigger uploadArea click -->
+        <button class="btn-secondary" onclick="event.stopPropagation(); document.getElementById('fileInput').click()">Browse File</button>
       </div>
 
       <div class="divider"><span>or</span></div>
@@ -36,7 +37,7 @@
         <textarea id="pasteText" placeholder="Paste your notes or syllabus here..."></textarea>
       </div>
       <div class="api-key-box">
-       <input type="password" id="apiKeyInput" placeholder="Enter your Gemini API Key..." />
+        <input type="password" id="apiKeyInput" placeholder="Enter your Gemini API Key..." autocomplete="off"/>
       </div>
       <button class="btn-primary" id="generateBtn">Generate Quiz ⚡</button>
     </div>
@@ -91,13 +92,17 @@
 
       <div class="score-breakdown" id="scoreBreakdown"></div>
 
+      <!-- Bug 5 Fix: separated into two rows so all 3 buttons have proper space -->
       <div class="score-actions">
         <button class="btn-primary" onclick="restartQuiz()">Try Again 🔄</button>
         <button class="btn-primary" onclick="generateNextSet()">Next 10 Questions ⚡</button>
+      </div>
+      <div class="score-actions-secondary">
         <button class="btn-secondary" onclick="goHome()">New Quiz 📄</button>
       </div>
     </div>
   </section>
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="script.js"></script>
 </body>

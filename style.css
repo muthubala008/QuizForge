@@ -443,13 +443,24 @@ textarea::placeholder { color: var(--text-muted); }
 .breakdown-item.correct-item { border-color: var(--success); }
 .breakdown-item.wrong-item   { border-color: var(--danger); }
 
+/* Bug 5 Fix: split into two rows so all 3 buttons have full width and space */
 .score-actions {
   display: flex;
   gap: 12px;
   width: 100%;
 }
-.score-actions .btn-primary,
-.score-actions .btn-secondary { width: 50%; }
+.score-actions .btn-primary {
+  flex: 1;
+}
+
+.score-actions-secondary {
+  width: 100%;
+}
+.score-actions-secondary .btn-secondary {
+  width: 100%;
+  padding: 14px 28px;
+  font-size: 1rem;
+}
 
 /* =====================
    RESPONSIVE
@@ -458,9 +469,9 @@ textarea::placeholder { color: var(--text-muted); }
   .navbar { padding: 14px 18px; }
   .screen { padding: 24px 14px; }
   h1 { font-size: 1.8rem; }
+  /* Bug 5 Fix: on mobile, stack all score buttons vertically */
   .score-actions { flex-direction: column; }
-  .score-actions .btn-primary,
-  .score-actions .btn-secondary { width: 100%; }
+  .score-actions .btn-primary { width: 100%; }
 }
 
 /* =====================

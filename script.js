@@ -10,6 +10,12 @@ let answered = false;
 let userAnswers = [];
 let previousQuestions = [];
 
+// Bug 1, 2, 3 Fix: persistent storage variables
+let storedContent = '';
+let storedAPIKey = '';
+let storedImageData = null;
+let storedImageType = '';
+
 // =====================
 //  THEME TOGGLE
 // =====================
@@ -47,6 +53,12 @@ fileInput.addEventListener('change', () => {
   if (fileInput.files[0]) handleFile(fileInput.files[0]);
 });
 
+// Bug 10 Fix: clicking anywhere on upload area opens file picker
+uploadArea.addEventListener('click', (e) => {
+  const browseBtn = uploadArea.querySelector('.btn-secondary');
+  if (e.target !== browseBtn) fileInput.click();
+});
+
 // =====================
 //  FILE HANDLER
 // =====================
@@ -64,6 +76,7 @@ function handleFile(file) {
   title.textContent = file.name;
   sub.textContent   = `${(file.size / 1024).toFixed(1)} KB — ready to generate`;
 }
+
 // =====================
 //  GENERATE QUIZ
 // =====================
@@ -76,6 +89,13 @@ document.getElementById('generateBtn').addEventListener('click', async () => {
     return;
   }
 
+  // Bug 4 Fix: validate API key before doing anything
+  const API_KEY = document.getElementById('apiKeyInput').value.trim();
+  if (!API_KEY) {
+    alert('Please enter your Gemini API Key before generating!');
+    return;
+  }
+
   let contentText = pasteText;
 
   if (file && !pasteText) {
@@ -85,7 +105,7 @@ document.getElementById('generateBtn').addEventListener('click', async () => {
       contentText = await readFileAsBase64(file);
       await generateQuizFromImage(contentText, file.type);
       return;
-    }  else if (file.type === 'application/pdf') {
+    } else if (file.type === 'application/pdf') {
       contentText = await extractTextFromPDF(file);
     } else {
       alert('For PDF support, paste your notes as text for now. Image and text files work directly!');
@@ -112,13 +132,29 @@ async function generateQuizFromText(text) {
   showScreen('loadingScreen');
   animateLoadingSteps();
 
-  const API_KEY = document.getElementById('apiKeyInput').value.trim();
+  // Bug 2 Fix: read from field OR stored key; save to storedAPIKey
+  const API_KEY = document.getElementById('apiKeyInput').value.trim() || storedAPIKey;
+  if (!API_KEY) {
+    alert('Please enter your Gemini API Key before generating!');
+    showScreen('homeScreen');
+    return;
+  }
+  storedAPIKey = API_KEY;
+
+  // Bug 1 Fix: save content for Next 10 Questions
+  storedContent = text;
+  storedImageData = null;
+  storedImageType = '';
+
+  // Bug 9 Fix: slice at last full stop to avoid cutting mid-sentence
+  const sliceEnd = text.lastIndexOf('.', 4000) + 1;
+  const safeText = sliceEnd > 0 ? text.slice(0, sliceEnd) : text.slice(0, 4000);
 
   const prompt = `You are a quiz generator. Based on the following study material, generate exactly 10 multiple choice questions.
 
 Study Material:
 """
-${text.slice(0, 4000)}
+${safeText}
 """
 
 Return ONLY a valid JSON array (no explanation, no markdown, no backticks) in this exact format:
@@ -136,7 +172,7 @@ ${previousQuestions.length > 0 ? `Do NOT repeat these questions: ${previousQuest
   try {
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`, {
       method: 'POST',
-      headers: { 
+      headers: {
         'Content-Type': 'application/json',
         'x-goog-api-key': API_KEY
       },
@@ -146,13 +182,22 @@ ${previousQuestions.length > 0 ? `Do NOT repeat these questions: ${previousQuest
     });
 
     const data = await response.json();
+
+    if (!data.candidates || !data.candidates[0]) {
+      throw new Error('No response from Gemini. Check your API key.');
+    }
+
     const raw = data.candidates[0].content.parts[0].text;
-    const clean = raw.replace(/```json|```/g, '').trim();
-    questions = JSON.parse(clean);
+
+    // Bug 7 Fix: extract JSON array robustly instead of just stripping backticks
+    const match = raw.match(/\[[\s\S]*\]/);
+    if (!match) throw new Error('No JSON array found in response');
+    questions = JSON.parse(match[0]);
+
     startQuiz();
   } catch (err) {
     console.error(err);
-    alert('Something went wrong! Check your API key and try again.');
+    alert('Something went wrong! ' + (err.message || 'Check your API key and try again.'));
     showScreen('homeScreen');
   }
 }
@@ -164,12 +209,24 @@ async function generateQuizFromImage(base64Data, mediaType) {
   showScreen('loadingScreen');
   animateLoadingSteps();
 
-  const API_KEY = document.getElementById('apiKeyInput').value.trim();
+  // Bug 2 Fix: read from field OR stored key; save to storedAPIKey
+  const API_KEY = document.getElementById('apiKeyInput').value.trim() || storedAPIKey;
+  if (!API_KEY) {
+    alert('Please enter your Gemini API Key before generating!');
+    showScreen('homeScreen');
+    return;
+  }
+  storedAPIKey = API_KEY;
+
+  // Bug 3 Fix: save image data for Next 10 Questions
+  storedImageData = base64Data;
+  storedImageType = mediaType;
+  storedContent = '';
 
   try {
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`, {
       method: 'POST',
-      headers: { 
+      headers: {
         'Content-Type': 'application/json',
         'x-goog-api-key': API_KEY
       },
@@ -184,21 +241,37 @@ async function generateQuizFromImage(base64Data, mediaType) {
     });
 
     const data = await response.json();
+
+    if (!data.candidates || !data.candidates[0]) {
+      throw new Error('No response from Gemini. Check your API key.');
+    }
+
     const raw = data.candidates[0].content.parts[0].text;
-    const clean = raw.replace(/```json|```/g, '').trim();
-    questions = JSON.parse(clean);
+
+    // Bug 7 Fix: extract JSON array robustly
+    const match = raw.match(/\[[\s\S]*\]/);
+    if (!match) throw new Error('No JSON array found in response');
+    questions = JSON.parse(match[0]);
+
     startQuiz();
   } catch (err) {
     console.error(err);
-    alert('Could not process the image. Try pasting text instead.');
+    alert('Could not process the image. ' + (err.message || 'Try pasting text instead.'));
     showScreen('homeScreen');
   }
 }
+
 // =====================
 //  LOADING ANIMATION
 // =====================
 function animateLoadingSteps() {
   const steps = ['step1', 'step2', 'step3', 'step4'];
+
+  // Bug 8 Fix: reset all steps before animating so second run looks correct
+  steps.forEach(id => {
+    document.getElementById(id).className = 'step';
+  });
+
   let i = 0;
   const interval = setInterval(() => {
     if (i > 0) document.getElementById(steps[i - 1]).classList.replace('active', 'done');
@@ -329,7 +402,7 @@ function showResults() {
   else if (pct >= 80)   { emoji = '🎉'; title = 'Great Job!';        msg = `You got ${score} out of ${total} right. Excellent work!`; }
   else if (pct >= 60)   { emoji = '👍'; title = 'Good Effort!';      msg = `You got ${score} out of ${total}. A little more revision and you'll ace it!`; }
   else if (pct >= 40)   { emoji = '📚'; title = 'Keep Practicing!';  msg = `You got ${score} out of ${total}. Review the material and try again.`; }
-  else                  { emoji = '💪'; title = 'Don\'t Give Up!';   msg = `You got ${score} out of ${total}. Study the topics and come back stronger!`; }
+  else                  { emoji = '💪'; title = "Don't Give Up!";    msg = `You got ${score} out of ${total}. Study the topics and come back stronger!`; }
 
   document.getElementById('scoreEmoji').textContent = emoji;
   document.getElementById('scoreTitle').textContent = title;
@@ -350,8 +423,14 @@ function restartQuiz() {
 }
 
 function goHome() {
+  // Bug 6 Fix: clear timer so it doesn't fire on a hidden screen
+  clearInterval(timer);
+
   showScreen('homeScreen');
   previousQuestions = [];
+  storedContent = '';
+  storedImageData = null;
+  storedImageType = '';
   document.getElementById('pasteText').value = '';
   fileInput.value = '';
   const icon  = uploadArea.querySelector('.upload-icon');
@@ -374,10 +453,12 @@ async function extractTextFromPDF(file) {
   return text;
 }
 
+// Bug 1 + 3 Fix: Next 10 Questions works for all file types
 async function generateNextSet() {
-  const text = document.getElementById('pasteText').value.trim();
-  if (text) {
-    await generateQuizFromText(text);
+  if (storedContent) {
+    await generateQuizFromText(storedContent);
+  } else if (storedImageData) {
+    await generateQuizFromImage(storedImageData, storedImageType);
   } else {
     alert('Please go back to home and upload your file again!');
     goHome();
@@ -388,6 +469,8 @@ async function generateNextSet() {
 //  SCREEN MANAGER
 // =====================
 function showScreen(id) {
+  // Bug 6 Fix: clear any running timer when switching screens
+  clearInterval(timer);
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
 }
